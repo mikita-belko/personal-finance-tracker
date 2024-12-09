@@ -1,0 +1,11 @@
+# Python
+venv/
+__pycache__/
+
+# Node.js/Angular
+node_modules/
+dist/
+
+# Logs and OS files
+*.log
+.DS_Store
