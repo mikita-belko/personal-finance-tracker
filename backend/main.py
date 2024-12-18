@@ -8,6 +8,7 @@ from database import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models import Income as IncomeModel, Expense as ExpenseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,6 +23,14 @@ async def lifespan(app: FastAPI):
     print("Application shutdown")  # Лог при завершении работы
 
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Pydantic-схема для доходов
 class Income(BaseModel):

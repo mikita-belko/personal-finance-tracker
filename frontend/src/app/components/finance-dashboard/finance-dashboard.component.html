@@ -1,0 +1,21 @@
+<div>
+    <h2>Финансовая сводка</h2>
+    <p>Общий доход: {{ summary.total_income || 0 }}</p>
+    <p>Общий расход: {{ summary.total_expense || 0 }}</p>
+    <p>Баланс: {{ summary.balance || 0 }}</p>
+  
+    <h3>Доходы</h3>
+    <ul>
+      <li *ngFor="let income of incomes">
+        {{ income.date }} - {{ income.source }}: {{ income.amount }} ₽
+      </li>
+    </ul>
+  
+    <h3>Расходы</h3>
+    <ul>
+      <li *ngFor="let expense of expenses">
+        {{ expense.date }} - {{ expense.category }}: {{ expense.amount }} ₽
+      </li>
+    </ul>
+  </div>
+  
