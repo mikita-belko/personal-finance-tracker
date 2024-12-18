@@ -1,109 +1,150 @@
-from pydantic import BaseModel
+import datetime
+from pydantic import BaseModel, Field
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
-from typing import List
+from fastapi import Depends
+from database import engine, Base
+from database import get_session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from models import Income as IncomeModel, Expense as ExpenseModel
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Действие при запуске приложения
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print("Database initialized")  # Лог при успешном старте
 
-# Модель доходов
+    yield  # Переходим к обработке запросов
+
+    # Действие при завершении работы приложения
+    print("Application shutdown")  # Лог при завершении работы
+
+app = FastAPI(lifespan=lifespan)
+
+# Pydantic-схема для доходов
 class Income(BaseModel):
-    id: int
-    amount: float  # Сумма дохода
-    source: str    # Источник дохода
-    date: str      # Дата в формате 'YYYY-MM-DD'
+    amount: float = Field(..., gt=0, description="Сумма дохода должна быть положительной")          # Сумма дохода
+    source: str = Field(..., min_length=3, description="Источник дохода не может быть пустым")      # Источник дохода
+    date: datetime.date = Field(..., description="Дата должна быть в формате YYYY-MM-DD")                    # Дата в формате 'YYYY-MM-DD'
 
-# Модель для расходов
+# Pydantic-схема для расходов
 class Expense(BaseModel):
-    id: int
-    amount: float   # Сумма расхода
-    category: str   # Категория расхода
-    date: str       # Дата в формате 'YYYY-MM-DD'
+    amount: float = Field(..., gt=0, description="Сумма расхода должна быть положительной")         # Сумма расхода
+    category: str = Field(..., min_length=3, description="Категория расхода не может быть пустой")  # Категория расхода
+    date: datetime.date = Field(..., description="Дата должна быть в формате YYYY-MM-DD")                    # Дата в формате 'YYYY-MM-DD'
 
-# Временное хранилище данных
-incomes: List[Income] = []
-expenses: List[Expense] = []
+# --- ДОХОДЫ ---
 
 # Создание дохода
 @app.post("/incomes", status_code=201)
-async def create_income(income: Income):
-    # Проверка на существующий ID
-    if any(i.id == income.id for i in incomes):
-        raise HTTPException(status_code=400, detail="Income with this ID already exists.")
-    
-    incomes.append(income)
-    return income
-
-# Обновление дохода по ID
-@app.put("/incomes/{income_id}")
-async def update_income(income_id: int, updated_income: Income):
-    for i, income in enumerate(incomes):
-        if income.id == income_id:
-            incomes[i] = updated_income
-            return updated_income
-    raise HTTPException(status_code=404, detail="Income not found")
+async def create_income(income: Income, session: AsyncSession = Depends(get_session)):
+    db_income = IncomeModel(**income.model_dump())
+    session.add(db_income)
+    await session.commit()
+    await session.refresh(db_income)
+    return db_income
 
 # Получение всех доходов
 @app.get("/incomes")
-async def get_incomes():
+async def get_incomes(session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(IncomeModel))
+    incomes = result.scalars().all()
     return incomes
 
 # Получение деталей конкретного дохода
 @app.get("/incomes/{income_id}")
-async def get_income(income_id: int):
-    for income in incomes:
-        if income.id == income_id:
-            return income
-    raise HTTPException(status_code=404, detail="Income not found")
+async def get_income(income_id: int, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(IncomeModel).where(IncomeModel.id == income_id))
+    income = result.scalars().first()
+    if not income:
+        raise HTTPException(status_code=404, detail="Income not found")
+    return income
+
+# Обновление дохода по ID
+@app.put("/incomes/{income_id}")
+async def update_income(income_id: int, updated_income: Income, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(IncomeModel).where(IncomeModel.id == income_id))
+    income = result.scalars().first()
+    if not income:
+        raise HTTPException(status_code=404, detail="Income not found")
+    income.amount = updated_income.amount
+    income.source = updated_income.source
+    income.date = updated_income.date
+    await session.commit()
+    return income
 
 # Удаление дохода по ID
 @app.delete("/incomes/{income_id}", status_code=204)
-async def delete_income(income_id: int):
-    global incomes
-    # Поиск записи
-    incomes = [income for income in incomes if income.id != income_id]
+async def delete_income(income_id: int, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(IncomeModel).where(IncomeModel.id == income_id))
+    income = result.scalars().first()
+    if not income:
+        raise HTTPException(status_code=404, detail="Income not found")
+    await session.delete(income)
+    await session.commit()
     return {"detail": "Income deleted successfully"}
+
+# --- РАСХОДЫ ---
 
 # Создание расхода
 @app.post("/expenses", status_code=201)
-async def create_expense(expense: Expense):
-    if any(e.id == expense.id for e in expenses):
-        raise HTTPException(status_code=400, detail="Expense with this ID already exists.")
-    expenses.append(expense)
-    return expense
-
-# Обновление расхода по ID
-@app.put("/expenses/{expense_id}")
-async def update_expense(expense_id: int, updated_expense: Expense):
-    for i, expense in enumerate(expenses):
-        if expense.id == expense_id:
-            expenses[i] = updated_expense
-            return updated_expense
-    raise HTTPException(status_code=404, detail="Expense not found")
+async def create_expense(expense: Expense, session: AsyncSession = Depends(get_session)):
+    db_expense = ExpenseModel(**expense.model_dump())
+    session.add(db_expense)
+    await session.commit()
+    await session.refresh(db_expense)
+    return db_expense
 
 # Получение всех расходов
 @app.get("/expenses")
-async def get_expenses():
+async def get_expenses(session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(ExpenseModel))
+    expenses = result.scalars().all()
     return expenses
 
 # Получение деталей конкретного расхода
 @app.get("/expenses/{expense_id}")
-async def get_expense(expense_id: int):
-    for expense in expenses:
-        if expense.id == expense_id:
-            return expense
-    raise HTTPException(status_code=404, detail="Expense not found")
+async def get_expense(expense_id: int, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(ExpenseModel).where(ExpenseModel.id == expense_id))
+    expense = result.scalars().first()
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    return expense
+
+# Обновление расхода по ID
+@app.put("/expenses/{expense_id}")
+async def update_expense(expense_id: int, updated_expense: Expense, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(ExpenseModel).where(ExpenseModel.id == expense_id))
+    expense = result.scalars().first()
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    expense.amount = updated_expense.amount
+    expense.category = updated_expense.category
+    expense.date = updated_expense.date
+    await session.commit()
+    return expense
 
 # Удаление расхода по ID
 @app.delete("/expenses/{expense_id}", status_code=204)
-async def delete_expense(expense_id: int):
-    global expenses
-    expenses = [expense for expense in expenses if expense.id != expense_id]
+async def delete_expense(expense_id: int, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(ExpenseModel).where(ExpenseModel.id == expense_id))
+    expense = result.scalars().first()
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    await session.delete(expense)
+    await session.commit()
     return {"detail": "Expense deleted successfully"}
 
-# Суммарные доходы и расходы
+# --- СУММАРНЫЕ ДОХОДЫ И РАСХОДЫ ---
+
 @app.get("/summary")
-async def get_summary():
-    total_income = sum(income.amount for income in incomes)
-    total_expense = sum(expense.amount for expense in expenses)
+async def get_summary(session: AsyncSession = Depends(get_session)):
+    result_incomes = await session.execute(select(IncomeModel))
+    result_expenses = await session.execute(select(ExpenseModel))
+    total_income = sum(income.amount for income in result_incomes.scalars().all())
+    total_expense = sum(expense.amount for expense in result_expenses.scalars().all())
     return {
         "total_income": total_income,
         "total_expense": total_expense,
