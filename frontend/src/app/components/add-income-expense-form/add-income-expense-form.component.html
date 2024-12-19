@@ -1,0 +1,30 @@
+<div class="form-container">
+  <h3>Добавить запись</h3>
+
+  <form (ngSubmit)="onSubmit()" #form="ngForm">
+    <label>
+      Тип записи:
+      <select [(ngModel)]="recordType" name="recordType" required>
+        <option value="income">Доход</option>
+        <option value="expense">Расход</option>
+      </select>
+    </label>
+
+    <label>
+      Сумма:
+      <input type="number" [(ngModel)]="amount" name="amount" required />
+    </label>
+
+    <label>
+      Описание:
+      <input type="text" [(ngModel)]="description" name="description" required />
+    </label>
+
+    <label>
+      Дата:
+      <input type="date" [(ngModel)]="date" name="date" required />
+    </label>
+
+    <button type="submit" [disabled]="form.invalid">Добавить</button>
+  </form>
+</div>

@@ -36,4 +36,24 @@ export class FinanceDashboardComponent implements OnInit {
       this.summary = data;
     });
   }
+
+  // Удаление дохода
+  deleteIncome(incomeId: number): void {
+    if (confirm('Вы уверены, что хотите удалить этот доход?')) {
+      this.incomeExpenseService.deleteIncome(incomeId).subscribe(() => {
+        alert('Доход успешно удалён!');
+        this.loadData(); // Обновляем список после удаления
+      });
+    }
+  }
+  
+  // Удаление расхода
+  deleteExpense(expenseId: number): void {
+    if (confirm('Вы уверены, что хотите удалить этот расход?')) {
+      this.incomeExpenseService.deleteExpense(expenseId).subscribe(() => {
+        alert('Расход успешно удалён!');
+        this.loadData(); // Обновляем список после удаления
+      });
+    }
+  }  
 }

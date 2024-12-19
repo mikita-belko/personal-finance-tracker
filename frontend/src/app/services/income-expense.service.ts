@@ -24,4 +24,24 @@ export class IncomeExpenseService {
   getSummary(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/summary`);
   }
+
+  // Создание дохода
+  createIncome(payload: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/incomes`, payload);
+  }
+
+  // Создание расхода
+  createExpense(payload: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/expenses`, payload);
+  }
+
+    // Удаление дохода
+  deleteIncome(incomeId: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/incomes/${incomeId}`);
+  }
+
+  // Удаление расхода
+  deleteExpense(expenseId: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/expenses/${expenseId}`);
+  }
 }

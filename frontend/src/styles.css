@@ -1,1 +1,31 @@
-/* You can add global styles to this file, and also import other style files */
+/* Базовые стили для тёмной темы */
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #121212; /* Тёмный фон */
+    color: #e0e0e0; /* Светлый текст */
+  }
+  
+  /* Контейнер */
+  .container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #1e1e1e; /* Темнее для контрастного контейнера */
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); /* Мягкая тень */
+  }
+  
+  /* Заголовки */
+  h2, h3 {
+    color: #ffffff;
+    margin-bottom: 16px;
+  }
+  
+  p {
+    margin: 8px 0;
+    font-size: 1rem;
+    color: #b0b0b0; /* Нежный серый для описательного текста */
+  }
+  
